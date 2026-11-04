@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hotel Review</title>
+<style>
+:root{--bg:#f6f7fb;--card:#fff;--ink:#111827;--mut:#6b7280;--ac:#4f46e5;--ok:#16a34a;--okbg:#dcfce7;--bad:#dc2626;--line:#e5e7eb}
+@media(prefers-color-scheme:dark){:root{--bg:#0f1117;--card:#1a1d27;--ink:#f3f4f6;--mut:#9ca3af;--ac:#818cf8;--ok:#4ade80;--okbg:#14351f;--bad:#f87171;--line:#2a2f3d}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 system-ui,-apple-system,Segoe UI,sans-serif}
+.w{max-width:640px;margin:0 auto;padding:16px}
+h1{font-size:22px;margin:4px 0 12px}
+.row2{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;margin-bottom:8px}
+.pill{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:99px;padding:8px 14px;white-space:nowrap;font-size:14px;cursor:pointer}
+.pill.on{background:var(--ac);color:#fff;border-color:var(--ac)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;margin-top:10px}
+.q{font-weight:700;font-size:18px;margin:0 0 10px}
+ul{list-style:none;margin:0;padding:0}
+li{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px dashed var(--line);min-height:50px}
+li:first-child{border-top:0}
+li b{color:var(--mut);width:20px;font-weight:600}
+li span{flex:1;font-size:17px}
+li.ok span{color:var(--ok);font-weight:600}
+li.rv span{color:var(--bad)}
+.k{background:var(--okbg);border-radius:4px;padding:0 4px}
+.dots{letter-spacing:2px;color:var(--mut)}
+button{font:inherit;font-size:14px;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:10px;padding:7px 11px;cursor:pointer}
+button.main{background:var(--ac);color:#fff;border-color:var(--ac)}
+.tick{color:var(--ok);font-weight:700}.miss{color:var(--bad);font-size:13px}
+input[type=text],textarea{font:inherit;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:10px;padding:10px;width:100%}
+li input{width:auto;padding:4px 8px;margin:0 2px}
+.bar{height:8px;background:var(--line);border-radius:9px;overflow:hidden;margin:6px 0 2px}
+.bar i{display:block;height:100%;background:var(--ok);transition:width .3s}
+.msg{min-height:22px;margin:8px 0;font-size:14px;color:var(--mut)}
+.tools{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.big{font-size:26px;letter-spacing:6px;font-weight:800;color:var(--ac);text-align:center;margin:10px 0}
+.shake{animation:s .3s}@keyframes s{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+</style></head><body><div class="w">
+<h1>🏨 Hotel Review</h1>
+<div class="row2" id="modes"></div>
+<div class="row2" id="decks"></div>
+<div id="app"></div>
+</div>
+<script>
+const D=[
+{t:"7 Examples of Hotels",q:"Name the 7 examples of hotels.",items:[["luxury hotel","luxury"],["business hotel"],["boutique hotel"],["resort hotel"],["budget hotel"],["airport hotel"],["extended stay hotel","extended stay"]]},
+{t:"6 Main Services",q:"Name the 6 main services of a hotel.",items:[["accommodation","accommodation"],["food and beverages"],["housekeeping"],["front office services"],["recreational facilities","recreational facilities"],["banquet and event services","banquet and event services"]]},
+{t:"7 Luxury Hotel Traits",q:"What are the 7 characteristics of a luxury hotel?",items:[["elegant accommodation","elegant"],["exceptional customers","exceptional"],["premium facilities","premium"],["fine dining restaurant"],["personalized guest","personalized"],["high standard of cleanliness","high standard"],["exclusive amenities"]]}
+];
+const M=[["study","📖 Study"],["type","⌨️ Type it"],["say","🎤 Say it"],["letters","🔤 First letters"],["missing","🧩 Missing word"],["mnem","🧠 Mnemonic"]];
+const $=s=>document.querySelector(s);
+let S={d:0,m:"study",found:new Set(),rev:new Set(),order:[],msg:"",vals:{},on:false,heard:""};
+const norm=s=>s.toLowerCase().replace(/[^a-z0-9 ]/g,"").replace(/\s+/g," ").trim();
+function lev(a,b){let p=Array.from({length:b.length+1},(_,j)=>j);for(let i=1;i<=a.length;i++){let c=[i];for(let j=1;j<=b.length;j++)c[j]=Math.min(p[j]+1,c[j-1]+1,p[j-1]+(a[i-1]==b[j-1]?0:1));p=c}return p[b.length]}
+function ok(inp,a){const n=norm(inp);if(!n)return false;const x=norm(a);return [x,x.replace(/ hotel$/,"")].some(c=>lev(n,c)<=Math.floor(c.length/6))}
+const items=()=>D[S.d].items;
+function reset(){S.found=new Set();S.rev=new Set();S.vals={};S.msg="";S.heard="";S.order=items().map((_,i)=>i)}
+function setDeck(d){S.d=d;reset();render()}
+function setMode(m){if(S.rec&&S.on)S.rec.stop();S.m=m;reset();render()}
+function shuffle(){S.order.sort(()=>Math.random()-.5);render()}
+function rev(i){S.rev.add(i);render()}
+function got(i){S.rev.delete(i);S.found.add(i);render()}
+function revealAll(){items().forEach((_,i)=>{if(!S.found.has(i))S.rev.add(i)});render()}
+function hl(it){return it[1]&&it[0].includes(it[1])?it[0].replace(it[1],`<span class=k>${it[1]}</span>`):it[0]}
+function hidden(it){return `<span class=dots>`+it[0].split(" ").map(w=>(S.m=="letters"?w[0]:"")+"•".repeat(S.m=="letters"?w.length-1:w.length)).join("&nbsp; ")+`</span>`}
+function bar(){const n=S.found.size,t=items().length;return `<div class=bar><i style="width:${n/t*100}%"></i></div><div class=msg>${n}/${t} correct${S.rev.size?` · ${S.rev.size} revealed`:""}${S.msg?` · ${S.msg}`:""}</div>`}
+function tools(){return `<div class=tools><button onclick="shuffle()">🔀 Shuffle</button><button onclick="revealAll()">👁 Reveal all</button><button onclick="reset();render()">↺ Try again</button></div>`}
+function rows(){return "<ul>"+S.order.map((i,k)=>{const it=items()[i],f=S.found.has(i),r=S.rev.has(i);
+const b=f?'<span class=tick>✓</span>':r?(S.m=="type"?'<span class=miss>missed</span>':`<button onclick="got(${i})">✓ I got it</button>`):`<button onclick="rev(${i})">Reveal</button>`;
+return `<li class="${f?"ok":r?"rv":""}"><b>${k+1}</b><span>${f||r?hl(it):hidden(it)}</span>${b}</li>`}).join("")+"</ul>"}
+function missing(){return "<ul>"+S.order.map((i,k)=>{const it=items()[i],key=it[1]||it[0].split(" ")[0],p=it[0].indexOf(key),pre=it[0].slice(0,p),suf=it[0].slice(p+key.length),f=S.found.has(i),r=S.rev.has(i),st=f?"ok":r?"rv":"";
+const v=f||r?key:(S.vals[i]||"");
+return `<li class="${st}"><b>${k+1}</b><span>${pre}<input type=text data-i="${i}" size="${Math.max(key.length,5)}" value="${v}" ${st?"disabled":""} oninput="S.vals[${i}]=this.value" onkeydown="if(event.key=='Enter')chk(${i})">${suf}</span>${f?'<span class=tick>✓</span>':r?'<span class=miss>missed</span>':`<button onclick="chk(${i})">Check</button><button onclick="rev(${i})">👁</button>`}</li>`}).join("")+"</ul>"}
+function chk(i){const it=items()[i],key=it[1]||it[0].split(" ")[0];if(ok(S.vals[i]||"",key)){S.found.add(i);S.msg="✓ Correct!"}else{S.msg="✗ Not quite — try again";}render()}
+function submit(){const v=$("#in").value;if(!v.trim())return;
+const i=S.order.find(i=>!S.found.has(i)&&!S.rev.has(i)&&ok(v,items()[i][0]));
+if(i!==undefined){S.found.add(i);S.msg=S.found.size==items().length?"🎉 Perfect!":"✓ Correct!"}
+else if(S.order.some(i=>S.found.has(i)&&ok(v,items()[i][0])))S.msg="Already got that one";
+else{S.msg="✗ Not on the list — try again or Reveal";render();$("#in").classList.add("shake");return}
+render()}
+function listen(){const R=window.SpeechRecognition||window.webkitSpeechRecognition;
+if(!R){S.msg="Speech recognition isn't supported here. Say it out loud, then tap Reveal.";render();return}
+if(S.on){S.rec.stop();return}
+const r=new R();r.lang="en-US";r.continuous=true;r.interimResults=false;S.rec=r;S.on=true;
+r.onresult=e=>{let t="";for(let i=e.resultIndex;i<e.results.length;i++)t+=" "+e.results[i][0].transcript;const n=norm(t);let c=0;
+items().forEach((it,i)=>{if(S.found.has(i)||S.rev.has(i))return;const a=norm(it[0]),b=a.replace(/ hotel$/,"");if(n.includes(a)||n.includes(b)||ok(t,it[0])){S.found.add(i);c++}});
+S.heard=t.trim();S.msg=c?`✓ Matched ${c}`:"Didn't match — try again";render()};
+r.onend=()=>{S.on=false;render()};r.onerror=()=>{S.on=false;S.msg="Mic blocked or unavailable";render()};
+try{r.start()}catch(e){S.on=false}render()}
+function mn(){try{return localStorage.getItem("mn"+S.d)||""}catch(e){return ""}}
+function saveMn(v){try{localStorage.setItem("mn"+S.d,v)}catch(e){}}
+function render(){
+$("#modes").innerHTML=M.map(m=>`<button class="pill ${S.m==m[0]?"on":""}" onclick="setMode('${m[0]}')">${m[1]}</button>`).join("");
+$("#decks").innerHTML=D.map((d,i)=>`<button class="pill ${S.d==i?"on":""}" onclick="setDeck(${i})">${d.t}</button>`).join("");
+const d=D[S.d];let h=`<div class=card><p class=q>${d.q}</p>`;
+if(!S.order.length)S.order=items().map((_,i)=>i);
+if(S.m=="study"){h+="<ul>"+items().map((it,i)=>`<li><b>${i+1}</b><span>${hl(it)}</span></li>`).join("")+"</ul><p class=msg>Read it aloud 3 times, then jump to Type it.</p>"}
+else if(S.m=="type"){h+=`<div style="display:flex;gap:8px"><input type=text id=in placeholder="Type one answer…" autocomplete=off onkeydown="if(event.key=='Enter')submit()"><button class=main onclick="submit()">Enter</button></div>`+bar()+rows()+tools()}
+else if(S.m=="say"){h+=`<button class=main style="width:100%;padding:14px" onclick="listen()">${S.on?"⏹ Stop listening":"🎤 Tap and say the answers"}</button>`+(S.heard?`<p class=msg>Heard: “${S.heard}”</p>`:"")+bar()+rows()+`<p class=msg>No mic? Say each one aloud, tap Reveal, then “I got it”.</p>`+tools()}
+else if(S.m=="letters"){h+=bar()+rows()+tools()}
+else if(S.m=="missing"){h+=bar()+missing()+tools()}
+else{const ini=items().map(it=>it[0][0].toUpperCase()).join(" · ");
+h+=`<div class=big>${ini}</div><p class=msg>These are the first letters. Make a silly sentence where each word starts with one of them, in order. Picture it as a scene.</p><textarea id=mt rows=3 placeholder="Your mnemonic…" oninput="saveMn(this.value)">${mn()}</textarea><p class=msg>Other tricks: say the list while walking, chunk into groups of 3–4, and write it from memory once a day.</p>`}
+$("#app").innerHTML=h+"</div>";
+const f=$("#in");if(f&&S.m=="type"&&!/Mobi/.test(navigator.userAgent))f.focus()}
+setDeck(0);
+</script></body></html>
